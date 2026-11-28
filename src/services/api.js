@@ -59,3 +59,60 @@ export async function obtenerPerfil() {
 
     return datos
 }
+
+// Hace una petición a la API usando el token guardado.
+// La usaremos para /items en este entregable y en el siguiente.
+async function peticionConToken(ruta, opciones = {}) {
+    const token = localStorage.getItem('token')
+
+    if (!token) {
+        throw new Error('No hay token guardado. Inicia sesión primero.')
+    }
+
+    const respuesta = await fetch(`${API_URL}${ruta}`, {
+        ...opciones,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    })
+
+    // Token inválido o expirado
+    if (respuesta.status === 401) {
+        localStorage.removeItem('token')
+        throw new Error('Tu token no es válido o ya expiró. Vuelve a iniciar sesión.')
+    }
+
+    // 204 = respuesta sin contenido (la veremos al eliminar en el Entregable 5)
+    if (respuesta.status === 204) {
+        return null
+    }
+
+    const datos = await respuesta.json()
+
+    if (!respuesta.ok) {
+        throw new Error(datos.error || `Error ${respuesta.status}`)
+    }
+
+    return datos
+}
+
+// Lista de items, con búsqueda y páginas de 5 en 5
+export async function obtenerItems(busqueda = '', pagina = 1) {
+    const parametros = new URLSearchParams({
+        page: pagina,
+        per_page: 5
+    })
+
+    if (busqueda) {
+        parametros.append('q', busqueda)
+    }
+
+    return peticionConToken(`/items?${parametros}`)
+}
+
+// Un solo item por su id
+export async function obtenerItem(id) {
+    return peticionConToken(`/items/${id}`)
+}
